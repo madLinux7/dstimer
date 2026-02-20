@@ -51,8 +51,9 @@ pub fn draw_timer(
         format!("{:02}:{:02}", mins, secs)
     };
 
-    let filled = ((1.0 - progress) * cols as f64).round().min(cols as f64) as u16;
-    let empty = cols.saturating_sub(filled);
+    let bar_width = cols.saturating_sub(4);
+    let filled = ((1.0 - progress) * bar_width as f64).round().min(bar_width as f64) as u16;
+    let empty = bar_width.saturating_sub(filled);
 
     let bar = format!(
         "{}{}",
@@ -70,7 +71,7 @@ pub fn draw_timer(
         .queue(SetAttribute(Attribute::Bold))?
         .queue(Print(&time_str))?
         .queue(SetAttribute(Attribute::Reset))?
-        .queue(MoveTo(0, center_row))?
+        .queue(MoveTo(2, center_row))?
         .queue(SetForegroundColor(color))?
         .queue(Print(&bar))?
         .queue(ResetColor)?
