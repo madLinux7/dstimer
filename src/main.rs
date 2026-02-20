@@ -453,8 +453,45 @@ fn draw_timer(
     Ok(())
 }
 
+/// Temporarily redirect stderr to /dev/null for the duration of `f`.
+/// Needed on Linux to suppress noisy JACK/ALSA fallback messages from
+/// cpal when it probes unavailable backends before settling on a working one.
+#[cfg(target_os = "linux")]
+fn with_stderr_suppressed<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    use std::os::unix::io::IntoRawFd;
+    unsafe {
+        let saved = libc::dup(2);
+        let devnull = std::fs::OpenOptions::new()
+            .write(true)
+            .open("/dev/null")
+            .map(|f| f.into_raw_fd())
+            .unwrap_or(-1);
+        if devnull >= 0 {
+            libc::dup2(devnull, 2);
+            libc::close(devnull);
+        }
+        let result = f();
+        if saved >= 0 {
+            libc::dup2(saved, 2);
+            libc::close(saved);
+        }
+        result
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn with_stderr_suppressed<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    f()
+}
+
 fn play_audio(path: &Path, running: &Arc<AtomicBool>) {
-    let Ok((_stream, stream_handle)) = OutputStream::try_default() else {
+    let Ok((_stream, stream_handle)) = with_stderr_suppressed(OutputStream::try_default) else {
         eprintln!("Error: Could not open audio output device.");
         return;
     };
