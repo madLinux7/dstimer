@@ -9,6 +9,7 @@ use crossterm::{
     terminal::{self, size, Clear, ClearType},
     ExecutableCommand,
 };
+use notify_rust::Notification;
 use std::{
     io::{self, stdout},
     path::PathBuf,
@@ -97,18 +98,28 @@ fn main() -> io::Result<()> {
 
     // Only play audio if timer completed naturally (not interrupted)
     if running.load(Ordering::Relaxed) && Instant::now() >= end {
+        const FINISHED_MSG: &str = "Timer finished!";
+        const FINISHED_MSG_AUDIO: &str = "Timer finished ♪ Playing audio";
+
+        let audio_used = audio_path.is_some();
+        let _ = Notification::new()
+            .summary("Dead Simple CLI Timer")
+            .body(if audio_used { FINISHED_MSG_AUDIO } else { FINISHED_MSG })
+            .appname("dstimer")
+            .show();
+
         let (_, rows) = size()?;
         let center_row = rows / 2;
 
-        if let Some(audio_path) = audio_path {
+        if audio_used == true {
             render::print_centered(
                 &mut stdout,
                 center_row + 2,
-                "Timer finished ♪ Playing audio",
+                FINISHED_MSG_AUDIO,
             )?;
-            audio::play_audio(&audio_path, &running);
+            audio::play_audio(audio_path.as_ref().unwrap(), &running);
         } else {
-            render::print_centered(&mut stdout, center_row + 2, "Timer finished!")?;
+            render::print_centered(&mut stdout, center_row + 2, FINISHED_MSG)?;
         }
     } else {
         println!("Timer cancelled.");
