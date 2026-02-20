@@ -111,7 +111,7 @@ fn main() -> io::Result<()> {
         let (_, rows) = size()?;
         let center_row = rows / 2;
 
-        if audio_used == true {
+        if audio_used {
             render::print_centered(
                 &mut stdout,
                 center_row + 2,
