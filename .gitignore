@@ -1,0 +1,14 @@
+/target/
+**/*.rs.bk
+*.pdb
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.profraw
+*.profdata
+.env
+.env.local
+**/*.bak
