@@ -101,7 +101,7 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
             last_blink = Instant::now();
         }
 
-        draw_time_input(&mut stdout, &digits, cursor_pos, blink_visible, &error_msg)?;
+        draw_time_input(&mut stdout, &digits, cursor_pos, blink_visible, error_msg)?;
 
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key_event) = event::read()? {
@@ -177,7 +177,7 @@ fn draw_time_input(
     digits: &[u8; 6],
     cursor_pos: usize,
     blink_visible: bool,
-    error_msg: &Option<&str>,
+    error_msg: Option<&str>,
 ) -> io::Result<()> {
     let (cols, rows) = size()?;
     let center_row = rows / 2;
@@ -318,7 +318,7 @@ fn prompt_audio_path(stdout: &mut io::Stdout) -> io::Result<Option<PathBuf>> {
         let visible_input = if input.len() > display_width {
             &input[input.len() - display_width..]
         } else {
-            &input
+            &input[..]
         };
 
         stdout
