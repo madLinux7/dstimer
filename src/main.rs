@@ -9,6 +9,7 @@ use crossterm::{
     terminal::{self, size, Clear, ClearType},
     ExecutableCommand,
 };
+#[cfg(not(target_os = "macos"))]
 use notify_rust::Notification;
 use std::{
     io::{self, stdout},
@@ -32,6 +33,10 @@ struct Args {
     /// Optional path to audio file to play when timer completes
     #[arg(short, long)]
     audio: Option<PathBuf>,
+
+    /// Disable notifications when timer finishes
+    #[arg(long)]
+    silent: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -96,33 +101,32 @@ fn main() -> io::Result<()> {
         thread::sleep(Duration::from_millis(50));
     }
 
+    let (_, rows) = size()?;
+    let center_row = rows / 2;
+
     // Only play audio if timer completed naturally (not interrupted)
     if running.load(Ordering::Relaxed) && Instant::now() >= end {
         const FINISHED_MSG: &str = "Timer finished!";
         const FINISHED_MSG_AUDIO: &str = "Timer finished ♪ Playing audio";
 
         let has_audio = audio_path.is_some();
-        let _ = Notification::new()
-            .summary("Dead Simple CLI Timer")
-            .body(if has_audio { FINISHED_MSG_AUDIO } else { FINISHED_MSG })
-            .appname("dstimer")
-            .show();
-
-        let (_, rows) = size()?;
-        let center_row = rows / 2;
+        let body = if has_audio {
+            FINISHED_MSG_AUDIO
+        } else {
+            FINISHED_MSG
+        };
+        if !args.silent {
+            send_notification("Dead Simple CLI Timer", body);
+        }
 
         if has_audio {
-            render::print_centered(
-                &mut stdout,
-                center_row + 2,
-                FINISHED_MSG_AUDIO,
-            )?;
+            render::print_centered(&mut stdout, center_row + 2, FINISHED_MSG_AUDIO)?;
             audio::play_audio(audio_path.as_ref().unwrap(), &running);
         } else {
             render::print_centered(&mut stdout, center_row + 2, FINISHED_MSG)?;
         }
     } else {
-        println!("Timer cancelled.");
+        render::print_centered(&mut stdout, center_row + 2, "Timer cancelled")?;
     }
 
     // Cleanup: show cursor, move to bottom, disable raw mode
@@ -133,4 +137,27 @@ fn main() -> io::Result<()> {
     terminal::disable_raw_mode()?;
 
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn send_notification(title: &str, body: &str) {
+    print!("\x07");
+    let script = format!(
+        "display notification \"{}\" with title \"{}\" sound name \"default\"",
+        body, title
+    );
+    let _ = std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .output();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn send_notification(title: &str, body: &str) {
+    print!("\x07");
+    let _ = Notification::new()
+        .summary(title)
+        .body(body)
+        .appname("dstimer")
+        .show();
 }
