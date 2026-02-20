@@ -93,6 +93,7 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
     let mut blink_visible = true;
     let mut last_blink = Instant::now();
     let blink_interval = Duration::from_millis(500);
+    let mut error_msg: Option<&str> = None;
 
     loop {
         if last_blink.elapsed() >= blink_interval {
@@ -100,7 +101,7 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
             last_blink = Instant::now();
         }
 
-        draw_time_input(&mut stdout, &digits, cursor_pos, blink_visible)?;
+        draw_time_input(&mut stdout, &digits, cursor_pos, blink_visible, &error_msg)?;
 
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key_event) = event::read()? {
@@ -123,6 +124,7 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
                             cursor_pos += 1;
                             blink_visible = true;
                             last_blink = Instant::now();
+                            error_msg = None;
                         }
                     }
                     KeyCode::Backspace if cursor_pos > 0 => {
@@ -141,7 +143,13 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
                         blink_visible = true;
                         last_blink = Instant::now();
                     }
-                    KeyCode::Enter => break,
+                    KeyCode::Enter => {
+                        if digits.iter().all(|&d| d == 0) {
+                            error_msg = Some("Duration must be greater than 0");
+                        } else {
+                            break;
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -169,9 +177,26 @@ fn draw_time_input(
     digits: &[u8; 6],
     cursor_pos: usize,
     blink_visible: bool,
+    error_msg: &Option<&str>,
 ) -> io::Result<()> {
     let (cols, rows) = size()?;
     let center_row = rows / 2;
+
+    // Error message
+    let error_row = center_row.saturating_sub(4);
+    stdout
+        .queue(MoveTo(0, error_row))?
+        .queue(Clear(ClearType::CurrentLine))?;
+    if let Some(err) = error_msg {
+        let err_col = cols.saturating_sub(err.len() as u16) / 2;
+        stdout
+            .queue(MoveTo(err_col, error_row))?
+            .queue(SetForegroundColor(Color::Red))?
+            .queue(SetAttribute(Attribute::Bold))?
+            .queue(Print(err))?
+            .queue(SetAttribute(Attribute::Reset))?
+            .queue(ResetColor)?;
+    }
 
     let title = "Enter duration (press Enter to start):";
     let title_col = cols.saturating_sub(title.len() as u16) / 2;
@@ -322,7 +347,7 @@ fn prompt_audio_path(stdout: &mut io::Stdout) -> io::Result<Option<PathBuf>> {
                 }
                 match key_event.code {
                     KeyCode::Enter => {
-                        let trimmed = input.trim();
+                        let trimmed = input.trim().trim_matches('"');
                         if trimmed.is_empty() {
                             stdout.execute(cursor::Hide)?;
                             return Ok(None);
