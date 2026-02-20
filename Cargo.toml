@@ -1,0 +1,12 @@
+[package]
+name = "dstimer"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.27"
+rodio = { version = "0.17", default-features = false, features = [
+    "symphonia-all",
+] }
+ctrlc = "3.4"
