@@ -3,6 +3,8 @@
 *.pdb
 .idea/
 .vscode/
+.vs/*
+!.vs/tasks.vs.json
 *.swp
 *.swo
 *~

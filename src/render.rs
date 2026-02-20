@@ -1,6 +1,6 @@
 use crossterm::{
     cursor::{self, MoveTo},
-    event::{self, Event, KeyCode, KeyModifiers},
+    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor},
     terminal::{self, size, Clear, ClearType},
     ExecutableCommand, QueueableCommand,
@@ -104,6 +104,9 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
 
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key_event) = event::read()? {
+                if key_event.kind != KeyEventKind::Press {
+                    continue;
+                }
                 if is_quit_event(&key_event) {
                     cleanup_and_exit(&mut stdout);
                 }
@@ -311,6 +314,9 @@ fn prompt_audio_path(stdout: &mut io::Stdout) -> io::Result<Option<PathBuf>> {
 
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key_event) = event::read()? {
+                if key_event.kind != KeyEventKind::Press {
+                    continue;
+                }
                 if is_quit_event(&key_event) {
                     cleanup_and_exit(stdout);
                 }
