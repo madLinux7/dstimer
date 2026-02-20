@@ -4,11 +4,11 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 
-![Demo with only seconds as argument](demo_args_1.gif)
-
 A dead-simple, cross-platform CLI countdown timer with a color-changing progress bar and optional audio playback on finish.
 
 Written in Rust for maximum efficiency and portability.
+
+![Demo with only seconds as argument](demo_args_1.gif)
 
 ## Features
 
@@ -21,8 +21,6 @@ Written in Rust for maximum efficiency and portability.
 
 ### CLI mode
 
-![Demo with seconds and audio as argument](demo_args_2.gif)
-
 ```bash
 dstimer --seconds 300
 dstimer -s 90 --audio /path/to/audio.wav
@@ -33,15 +31,17 @@ dstimer -s 90 --audio /path/to/audio.wav
 | `--seconds` | `-s` | Duration in seconds |
 | `--audio` | `-a` | Path to audio file to play on finish |
 
-### **Interactive mode** (no arguments):
+![Demo with seconds and audio as arguments](demo_args_2.gif)
 
-![demo_manual](demo_manual.gif)
+### **Interactive mode** (no arguments):
 
 ```bash
 dstimer
 ```
 
 You'll be prompted to enter a duration and an optional audio file path.
+
+![demo_manual](demo_manual.gif)
 
 ## Install
 
@@ -84,7 +84,7 @@ Requires Rust 1.70+.
 
 ## Support me
 
-(TODO: kofi link, Bitcoin, Ethereum, Monero, Litecoin, Dogecoin, XRP)
+(TODO: kofi link, Bitcoin, Ethereum, Litecoin, XRP)
 
 ---
 
