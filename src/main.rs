@@ -101,17 +101,17 @@ fn main() -> io::Result<()> {
         const FINISHED_MSG: &str = "Timer finished!";
         const FINISHED_MSG_AUDIO: &str = "Timer finished ♪ Playing audio";
 
-        let audio_used = audio_path.is_some();
+        let has_audio = audio_path.is_some();
         let _ = Notification::new()
             .summary("Dead Simple CLI Timer")
-            .body(if audio_used { FINISHED_MSG_AUDIO } else { FINISHED_MSG })
+            .body(if has_audio { FINISHED_MSG_AUDIO } else { FINISHED_MSG })
             .appname("dstimer")
             .show();
 
         let (_, rows) = size()?;
         let center_row = rows / 2;
 
-        if audio_used {
+        if has_audio {
             render::print_centered(
                 &mut stdout,
                 center_row + 2,
