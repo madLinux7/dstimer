@@ -3,6 +3,9 @@ name = "dstimer"
 version = "1.0.0"
 edition = "2021"
 
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 crossterm = "0.27"
