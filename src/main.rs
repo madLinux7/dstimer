@@ -11,6 +11,7 @@ use crossterm::{
 };
 #[cfg(not(target_os = "macos"))]
 use notify_rust::Notification;
+
 use std::{
     io::{self, stdout},
     path::PathBuf,
@@ -20,12 +21,18 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub const ERR_ZERO_DURATION: &str = "Duration must be greater than 0 seconds";
+
 #[derive(Parser)]
 #[command(name = "dstimer")]
 #[command(
     about = "A centered CLI timer with color-changing progress bar and option to play audio on finish."
 )]
 struct Args {
+    /// Duration in HH:MM:SS format (e.g. 1:30:00, 5:00, 90). Takes priority over --seconds
+    #[arg(short, long, value_parser = parse_time)]
+    time: Option<u64>,
+
     /// Duration in seconds
     #[arg(short, long)]
     seconds: Option<u64>,
@@ -37,25 +44,64 @@ struct Args {
     /// Disable notifications when timer finishes
     #[arg(long)]
     silent: bool,
+
+    /// Inline mode: show timer on current line without clearing the screen
+    #[arg(short, long)]
+    inline: bool,
+}
+
+/// Parse a time string in HH:MM:SS, MM:SS, or SS format into total seconds.
+fn parse_time(s: &str) -> Result<u64, String> {
+    let parts: Vec<&str> = s.split(':').collect();
+    match parts.len() {
+        1 => parts[0].parse::<u64>().map_err(|e| e.to_string()),
+        2 => {
+            let mins = parts[0].parse::<u64>().map_err(|e| e.to_string())?;
+            let secs = parts[1].parse::<u64>().map_err(|e| e.to_string())?;
+            if secs >= 60 {
+                return Err("seconds must be 0-59".to_string());
+            }
+            Ok(mins * 60 + secs)
+        }
+        3 => {
+            let hrs = parts[0].parse::<u64>().map_err(|e| e.to_string())?;
+            let mins = parts[1].parse::<u64>().map_err(|e| e.to_string())?;
+            let secs = parts[2].parse::<u64>().map_err(|e| e.to_string())?;
+            if mins >= 60 {
+                return Err("minutes must be 0-59".to_string());
+            }
+            if secs >= 60 {
+                return Err("seconds must be 0-59".to_string());
+            }
+            Ok(hrs * 3600 + mins * 60 + secs)
+        }
+        _ => Err("expected format: HH:MM:SS, MM:SS, or SS".to_string()),
+    }
 }
 
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let (duration_secs, audio_path) = if args.seconds.is_none() {
-        render::interactive_prompt()?
-    } else {
+    let explicit_duration = args.time.or(args.seconds);
+
+    let (duration_secs, audio_path) = if let Some(secs) = explicit_duration {
         if let Some(ref path) = args.audio {
             if !path.exists() {
                 eprintln!("Error: audio file not found: {}", path.display());
                 std::process::exit(1);
             }
         }
-        (args.seconds.unwrap(), args.audio)
+        (secs, args.audio)
+    } else {
+        if args.inline {
+            render::inline_interactive_prompt()?
+        } else {
+            render::interactive_prompt()?
+        }
     };
 
     if duration_secs == 0 {
-        println!("Duration must be greater than 0.");
+        println!("{ERR_ZERO_DURATION}");
         return Ok(());
     }
 
@@ -71,6 +117,51 @@ fn main() -> io::Result<()> {
     .expect("Error setting Ctrl-C handler");
 
     let mut stdout = stdout();
+
+    if args.inline {
+        run_inline_timer(
+            &mut stdout,
+            duration,
+            start,
+            end,
+            &running,
+            &audio_path,
+            args.silent,
+        )?;
+    } else {
+        run_fullscreen_timer(
+            &mut stdout,
+            duration,
+            start,
+            end,
+            &running,
+            &audio_path,
+            args.silent,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn get_color(progress: f64) -> Color {
+    if progress < 0.5 {
+        Color::Green
+    } else if progress < 0.8 {
+        Color::Yellow
+    } else {
+        Color::Red
+    }
+}
+
+fn run_fullscreen_timer(
+    stdout: &mut io::Stdout,
+    duration: Duration,
+    start: Instant,
+    end: Instant,
+    running: &Arc<AtomicBool>,
+    audio_path: &Option<PathBuf>,
+    silent: bool,
+) -> io::Result<()> {
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
     stdout.execute(Clear(ClearType::All))?;
@@ -89,25 +180,88 @@ fn main() -> io::Result<()> {
         let remaining = duration.saturating_sub(elapsed);
         let progress = elapsed.as_secs_f64() / duration.as_secs_f64();
 
-        let color = if progress < 0.5 {
-            Color::Green
-        } else if progress < 0.8 {
-            Color::Yellow
-        } else {
-            Color::Red
-        };
-
-        render::draw_timer(&mut stdout, remaining, progress, color)?;
+        render::draw_timer(stdout, remaining, progress, get_color(progress))?;
         thread::sleep(Duration::from_millis(50));
     }
 
     let (_, rows) = size()?;
     let center_row = rows / 2;
 
-    // Only play audio if timer completed naturally (not interrupted)
+    handle_finish(stdout, running, end, audio_path, silent, |stdout, msg| {
+        render::print_centered(stdout, center_row + 2, msg)
+    })?;
+
+    stdout.execute(cursor::Show)?;
+    let (_, rows) = size()?;
+    stdout.execute(cursor::MoveTo(0, rows - 1))?;
+    stdout.execute(Print("\n"))?;
+    terminal::disable_raw_mode()?;
+
+    Ok(())
+}
+
+fn run_inline_timer(
+    stdout: &mut io::Stdout,
+    duration: Duration,
+    start: Instant,
+    end: Instant,
+    running: &Arc<AtomicBool>,
+    audio_path: &Option<PathBuf>,
+    silent: bool,
+) -> io::Result<()> {
+    terminal::enable_raw_mode()?;
+    stdout.execute(cursor::Hide)?;
+
+    // Top padding
+    stdout.execute(Print("\r\n"))?;
+    // Save the row where the timer will render
+    let (_, timer_row) = cursor::position()?;
+
+    while running.load(Ordering::Relaxed) && Instant::now() < end {
+        if event::poll(Duration::from_millis(0))? {
+            if let Event::Key(key_event) = event::read()? {
+                if render::is_quit_event(&key_event) {
+                    running.store(false, Ordering::Relaxed);
+                    break;
+                }
+            }
+        }
+
+        let elapsed = start.elapsed();
+        let remaining = duration.saturating_sub(elapsed);
+        let progress = elapsed.as_secs_f64() / duration.as_secs_f64();
+
+        render::draw_inline_timer(stdout, timer_row, remaining, progress, get_color(progress))?;
+        thread::sleep(Duration::from_millis(50));
+    }
+
+    handle_finish(stdout, running, end, audio_path, silent, |stdout, msg| {
+        render::print_inline_finish(stdout, timer_row + 1, msg)
+    })?;
+
+    // Bottom padding (2 empty lines)
+    stdout.execute(cursor::MoveTo(0, timer_row + 2))?;
+    stdout.execute(Print("\r\n\r\n"))?;
+    stdout.execute(cursor::Show)?;
+    terminal::disable_raw_mode()?;
+
+    Ok(())
+}
+
+fn handle_finish<F>(
+    stdout: &mut io::Stdout,
+    running: &Arc<AtomicBool>,
+    end: Instant,
+    audio_path: &Option<PathBuf>,
+    silent: bool,
+    print_msg: F,
+) -> io::Result<()>
+where
+    F: Fn(&mut io::Stdout, &str) -> io::Result<()>,
+{
     if running.load(Ordering::Relaxed) && Instant::now() >= end {
         const FINISHED_MSG: &str = "Timer finished!";
-        const FINISHED_MSG_AUDIO: &str = "Timer finished ♪ Playing audio";
+        const FINISHED_MSG_AUDIO: &str = "Timer finished \u{266a} Playing audio";
 
         let has_audio = audio_path.is_some();
         let body = if has_audio {
@@ -115,27 +269,19 @@ fn main() -> io::Result<()> {
         } else {
             FINISHED_MSG
         };
-        if !args.silent {
+        if !silent {
             send_notification("Dead Simple CLI Timer", body);
         }
 
         if has_audio {
-            render::print_centered(&mut stdout, center_row + 2, FINISHED_MSG_AUDIO)?;
-            audio::play_audio(audio_path.as_ref().unwrap(), &running);
+            print_msg(stdout, FINISHED_MSG_AUDIO)?;
+            audio::play_audio(audio_path.as_ref().unwrap(), running);
         } else {
-            render::print_centered(&mut stdout, center_row + 2, FINISHED_MSG)?;
+            print_msg(stdout, FINISHED_MSG)?;
         }
     } else {
-        render::print_centered(&mut stdout, center_row + 2, "Timer cancelled")?;
+        print_msg(stdout, "Timer cancelled")?;
     }
-
-    // Cleanup: show cursor, move to bottom, disable raw mode
-    stdout.execute(cursor::Show)?;
-    let (_, rows) = size()?;
-    stdout.execute(cursor::MoveTo(0, rows - 1))?;
-    stdout.execute(Print("\n"))?;
-    terminal::disable_raw_mode()?;
-
     Ok(())
 }
 
