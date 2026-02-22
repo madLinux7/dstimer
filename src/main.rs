@@ -83,6 +83,7 @@ fn main() -> io::Result<()> {
     let args = Args::parse();
 
     let explicit_duration = args.time.or(args.seconds);
+    let has_explicit_duration = explicit_duration.is_some();
 
     let (duration_secs, audio_path) = if let Some(secs) = explicit_duration {
         if let Some(ref path) = args.audio {
@@ -119,6 +120,10 @@ fn main() -> io::Result<()> {
     let mut stdout = stdout();
 
     if args.inline {
+        if has_explicit_duration {
+            stdout.execute(Print("\r\n"))?;
+        }
+
         run_inline_timer(
             &mut stdout,
             duration,
@@ -212,9 +217,7 @@ fn run_inline_timer(
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
 
-    // Top padding
-    stdout.execute(Print("\r\n"))?;
-    // Save the row where the timer will render
+    // Render on the current line (same line the interactive prompt left off on)
     let (_, timer_row) = cursor::position()?;
 
     while running.load(Ordering::Relaxed) && Instant::now() < end {
@@ -236,11 +239,10 @@ fn run_inline_timer(
     }
 
     handle_finish(stdout, running, end, audio_path, silent, |stdout, msg| {
-        render::print_inline_finish(stdout, timer_row + 1, msg)
+        render::print_inline_finish(stdout, timer_row, msg)
     })?;
 
-    // Bottom padding (2 empty lines)
-    stdout.execute(cursor::MoveTo(0, timer_row + 2))?;
+    // Blank line after finish message
     stdout.execute(Print("\r\n\r\n"))?;
     stdout.execute(cursor::Show)?;
     terminal::disable_raw_mode()?;
