@@ -123,11 +123,11 @@ pub fn draw_inline_timer(
     Ok(())
 }
 
-/// Print finish/cancel message on the given row (inline mode).
-pub fn print_inline_finish(stdout: &mut io::Stdout, row: u16, msg: &str) -> io::Result<()> {
+/// Print finish/cancel message on the line below the timer bar (inline mode).
+pub fn print_inline_finish(stdout: &mut io::Stdout, timer_row: u16, msg: &str) -> io::Result<()> {
     stdout
-        .queue(MoveTo(0, row))?
-        .queue(Clear(ClearType::CurrentLine))?
+        .queue(MoveTo(0, timer_row))?
+        .queue(Print("\r\n"))?
         .queue(Print(msg))?
         .flush()
 }
