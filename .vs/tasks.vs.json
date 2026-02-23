@@ -1,0 +1,20 @@
+{
+  "version": "0.2.1",
+  "tasks": [
+    {
+      "taskLabel": "Build + Run with cargo",
+      "appliesTo": "src/main.rs",
+      "type": "launch",
+      "command": "cmd.exe",
+      "args": [
+        "cargo",
+        "build && start target\\debug\\dstimer.exe"
+      ]
+    },
+    {
+      "taskLabel": "task-dead-simple-cli-timer",
+      "appliesTo": "/",
+      "type": "launch"
+    }
+  ]
+}
