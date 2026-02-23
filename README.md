@@ -1,10 +1,10 @@
-# dstimer
+# Dead Simple CLI Timer (dstimer)
 
 ![Rust](https://img.shields.io/badge/built_with-Rust-orange?logo=rust)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 
-A dead-simple, cross-platform CLI countdown timer with a color-changing progress bar and optional audio playback on finish.
+A dead-simple, cross-platform CLI countdown timer with color-changing progress bar and optional audio playback on finish.
 
 Written in Rust for maximum efficiency and portability.
 
@@ -13,23 +13,28 @@ Written in Rust for maximum efficiency and portability.
 ## Features
 
 - Centered, full-width **progress bar** that shifts green → yellow → red as time runs out
-- Interactive **time entry** (HH:MM:SS) when launched with no arguments
+- **Fullscreen** (default) or **inline** mode
+- Interactive **time entry** (HH:MM:SS)
 - Optional **audio file playback** when the timer completes
-- Ctrl+C cancels at any point — including during audio playback
 
 ## Usage
 
-### CLI mode
+### Fullscreen mode
 
 ```bash
 dstimer --seconds 300
 dstimer -s 90 --audio /path/to/audio.wav
+dstimer --time 1:30:00
+dstimer -t 5:00 --inline
 ```
 
 | Flag | Short | Description |
 |------|-------|-------------|
+| `--time` | `-t` | Duration in `HH:MM:SS`, `MM:SS`, or `SS` format |
 | `--seconds` | `-s` | Duration in seconds |
 | `--audio` | `-a` | Path to audio file to play on finish |
+| `--inline` | `-i` | Inline mode (see below) |
+| `--silent` | | Suppress desktop notifications |
 
 ![Demo with seconds and audio as arguments](demo_args_2.gif)
 
@@ -43,18 +48,31 @@ You'll be prompted to enter a duration and an optional audio file path.
 
 ![demo_manual](demo_manual.gif)
 
+### **Inline mode** (`--inline` / `-i`):
+
+```bash
+dstimer -s 60 --inline
+dstimer --inline          # interactive prompt stays inline too
+```
+
+Renders the timer on the **current terminal line** instead of taking over the full screen. Useful for scripts, split panes, or when you want the rest of your terminal history visible.
+
+![Demo inline with -i -t 00:00:07 args](demo_inline_args_1.gif)
+![Demo inline with -i -t 00:00:07 -a "home/linuxg/Musik/Super Survivor.flac" args](demo_inline_args_2.gif)
+![Demo inline interactive mode](demo_inline_manual.gif)
+
 ## Install
 
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/dead-simple-cli-timer/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/madLinux7/dead-simple-cli-timer/main/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/dead-simple-cli-timer/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/madLinux7/dead-simple-cli-timer/main/install.ps1 | iex
 ```
 
 **Via Cargo (requires Rust):**
@@ -70,7 +88,7 @@ MP3, FLAC, WAV, OGG, and anything else supported by [Symphonia](https://github.c
 ## Build from Source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/madLinux7/dead-simple-cli-timer
 cd dead-simple-cli-timer
 cargo build --release
 ./target/release/dstimer
@@ -78,14 +96,30 @@ cargo build --release
 
 Requires Rust 1.70+.
 
-## Contribute
+## Contributing
 
-(TODO: Create pull quest blablabla)
+Contributions are always welcome! If you want to help, here's the workflow:
 
-## Support me
+1. Fork the repo and create a feature branch
+2. `cargo clippy` and `cargo fmt` before opening a PR
+3. Follow the existing commit style: `feat:`, `fix:`, `chore:`, `refactor:`
 
-(TODO: kofi link, Bitcoin, Ethereum, Litecoin, XRP)
+No formal issue template — just open one if you want to discuss an idea first.
+
+## ✨ Acknowledgements ✨
+
+dstimer couldn't be dead simple without the efforts of some great open-source projects:
+
+- [clap](https://github.com/clap-rs/clap) — CLI argument parsing
+- [crossterm](https://github.com/crossterm-rs/crossterm) — cross-platform terminal manipulation
+- [rodio](https://github.com/RustAudio/rodio) — audio playback
+- [Symphonia](https://github.com/pdeljanov/Symphonia) — audio decoding (MP3, FLAC, WAV, OGG, ...)
+- [ctrlc](https://github.com/Detegr/rust-ctrlc) — Ctrl+C signal handling
+- [notify-rust](https://github.com/hoodie/notify-rust) — desktop notifications on Linux & Windows
+- [winresource](https://github.com/mxre/winresource) — embedding the app icon on Windows
+
+And a special shoutout to [VHS](https://github.com/charmbracelet/vhs) by Charm for making it _dead simple_ to record bootyful terminal GIFs straight from a script ♥️
 
 ---
 
-Made with ❤️ by [Linus Grolmes](https://grolmes.de)
+Made with ♥️ by [Linus Grolmes](https://grolmes.de)

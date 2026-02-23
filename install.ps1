@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Repo = "YOUR_GITHUB_USERNAME/dead-simple-cli-timer"
+$Repo = "madLinux7/dead-simple-cli-timer"
 $Bin = "dstimer"
 $InstallDir = "$env:LOCALAPPDATA\Programs\$Bin"
 $Asset = "$Bin-windows-x86_64.exe"
