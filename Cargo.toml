@@ -2,6 +2,13 @@
 name = "dstimer"
 version = "1.0.0"
 edition = "2021"
+description = "A dead-simple, cross-platform CLI countdown timer with color-changing progress bar and optional audio playback"
+license = "MIT"
+repository = "https://github.com/madLinux7/dead-simple-cli-timer"
+homepage = "https://github.com/madLinux7/dead-simple-cli-timer"
+keywords = ["cli", "timer", "countdown", "tui", "terminal"]
+categories = ["command-line-utilities"]
+readme = "README.md"
 
 [build-dependencies]
 winresource = "0.1"

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="YOUR_GITHUB_USERNAME/dead-simple-cli-timer"
+REPO="madLinux7/dead-simple-cli-timer"
 BIN="dstimer"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
