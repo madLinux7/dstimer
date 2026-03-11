@@ -6,7 +6,7 @@ Output demo_args_1.gif
   Set Width 1200
   Set Height 600
 
-  Type "dstimer -s 7"
+  Type "dstimer 7"
   Sleep 500ms
   Enter
   Sleep 9s

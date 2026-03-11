@@ -6,7 +6,7 @@ Output demo_args_2.gif
   Set Width 1200
   Set Height 600
 
-  Type "dstimer -s 7 -a /Users/linuxg/Music/truisms_4_dummies.mp3"
-  Sleep 1s
+  Type "dstimer 7 -a /home/linuxg/Musik/MkWii_online_spectator.flac"
+  Sleep 500ms
   Enter
   Sleep 9s

@@ -8,35 +8,24 @@ A dead-simple, cross-platform CLI countdown timer with color-changing progress b
 
 Written in Rust for maximum efficiency and portability.
 
-![Demo with only seconds as argument](demo_args_1.gif)
+![Demo with 7 as argument representing the seconds](demo_args_1.gif)
 
 ## Features
 
-- Centered, full-width **progress bar** that shifts green → yellow → red as time runs out
-- **Fullscreen** (default) or **inline** mode
-- Interactive **time entry** (HH:MM:SS)
-- Optional **audio file playback** when the timer completes
+- Automatically parses **HH:MM:SS**, **MM:SS** or just **seconds**
+- **Fullscreen** (default) or **--inline** mode
+- Full-width **progress bar**: green → yellow → red as time runs out
+- Interactive **time entry** (HH:MM:SS) when no arguments parsed
+- ♪ Optional **audio file playback** when the timer completes ♪
 
 ## Usage
 
-### Fullscreen mode
-
-```bash
-dstimer --seconds 300
-dstimer -s 90 --audio /path/to/audio.wav
-dstimer --time 1:30:00
-dstimer -t 5:00 --inline
-```
-
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--time` | `-t` | Duration in `HH:MM:SS`, `MM:SS`, or `SS` format |
-| `--seconds` | `-s` | Duration in seconds |
+| `--time` | `-t` | Default argument parsing duration in `HH:MM:SS`, `MM:SS`, or `SS` format |
 | `--audio` | `-a` | Path to audio file to play on finish |
 | `--inline` | `-i` | Inline mode (see below) |
 | `--silent` | | Suppress desktop notifications |
-
-![Demo with seconds and audio as arguments](demo_args_2.gif)
 
 ### **Interactive mode** (no arguments):
 
@@ -48,18 +37,30 @@ You'll be prompted to enter a duration and an optional audio file path.
 
 ![demo_manual](demo_manual.gif)
 
+### Fullscreen mode
+
+```bash
+dstimer # starts interactive mode
+dstimer 25:00 # 25 minutes
+dstimer 7 # 7 seconds
+dstimer --time 1:30:17 # 1 hour 30 minutes 17 seconds
+dstimer 90 --audio /path/to/audio.wav # plays audio.wav after 90 seconds
+```
+
+![Demo with seconds and audio as arguments](demo_args_2.gif)
+
 ### **Inline mode** (`--inline` / `-i`):
 
 ```bash
-dstimer -s 60 --inline
-dstimer --inline          # interactive prompt stays inline too
+dstimer --inline # interactive prompt stays inline too
+dstimer 60 -i
 ```
 
 Renders the timer on the **current terminal line** instead of taking over the full screen. Useful for scripts, split panes, or when you want the rest of your terminal history visible.
 
+![Demo inline interactive mode](demo_inline_manual.gif)
 ![Demo inline with -i -t 00:00:07 args](demo_inline_args_1.gif)
 ![Demo inline with -i -t 00:00:07 -a "home/linuxg/Musik/Super Survivor.flac" args](demo_inline_args_2.gif)
-![Demo inline interactive mode](demo_inline_manual.gif)
 
 ## Install
 
@@ -125,14 +126,8 @@ And a special shoutout to [VHS](https://github.com/charmbracelet/vhs) by Charm f
 If you like using dstimer in your daily routine, consider buying me a coffee or sending a tip:
 
 [Ko-fi](https://ko-fi.com/madlinux) ·
-[Bitcoin](bitcoin:bc1qv45u88hnq4xec2l8yx0qfyx88nsn63wxleln0d) ·
-[Monero](monero:42TKoMfUoEFbCsNdppQN4426zqCcgfTrad2YY8jQ7rPi9tRoLtuM9C4Ma1Q4f2L3pyLgpogwrJkeg2KuVADw3mj6Qzkhdgh) ·
-[Ethereum](ethereum:0xC251CF4323e052EdcEd397f539CC0A91b9891047) ·
-[Solana](solana:cMxfUJSVGc1RUS5ncdKQSv9mcCpEuDbJxQx1wg79DVt) ·
-[Litecoin](litecoin:ltc1qfddle7wknmgwen2scshmw42tykdxew5wc96858) ·
-[Cardano](web+cardano:addr1q9rsqmwf2spwnnnmth879323ssnaf92j7zj0pn6yhs23g7z8qpkuj4qza888khw0utz4rpp86j249u9y7r85f0q4z3uqxcwrsf) ·
-[XRP](xrp:r9ZrXVAckZ3wepeprkVdszNbXTcDT7cCNS)
+[Bitcoin](bitcoin:bc1qv45u88hnq4xec2l8yx0qfyx88nsn63wxleln0d)
 
 ---
 
-Made with ♥️ by [Linus Grolmes](https://grolmes.de)
+Made with ♥️ by [Linus](https://grolmes.de)
