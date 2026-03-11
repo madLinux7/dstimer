@@ -33,9 +33,9 @@ struct Args {
     #[arg(short, long, value_parser = parse_time)]
     time: Option<u64>,
 
-    /// Duration in seconds
-    #[arg(short, long)]
-    seconds: Option<u64>,
+    /// Duration as a positional argument in HH:MM:SS format (e.g. 1:30:00, 5:00, 90)
+    #[arg(value_parser = parse_time)]
+    time_pos: Option<u64>,
 
     /// Optional path to audio file to play when timer completes
     #[arg(short, long)]
@@ -82,7 +82,7 @@ fn parse_time(s: &str) -> Result<u64, String> {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let explicit_duration = args.time.or(args.seconds);
+    let explicit_duration = args.time.or(args.time_pos);
     let has_explicit_duration = explicit_duration.is_some();
 
     let (duration_secs, audio_path) = if let Some(secs) = explicit_duration {

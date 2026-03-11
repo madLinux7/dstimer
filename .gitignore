@@ -14,3 +14,4 @@
 .env
 .env.local
 **/*.bak
+publish_main_and_github.sh
