@@ -27,15 +27,18 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
             asset_name: dstimer-linux-x86_64
+            use_upx: true
 
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-latest
             asset_name: dstimer-linux-aarch64
             use_cross: true
+            use_upx: true
 
           - target: x86_64-pc-windows-msvc
             runner: windows-latest
             asset_name: dstimer-windows-x86_64.exe
+            use_upx: true
 
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +63,18 @@ jobs:
       - name: Build (cargo)
         if: matrix.use_cross != true
         run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Compress binary with UPX (Linux)
+        if: matrix.use_upx == true && matrix.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y upx-ucl
+          upx --best --lzma target/${{ matrix.target }}/release/dstimer
+
+      - name: Compress binary with UPX (Windows)
+        if: matrix.use_upx == true && matrix.runner == 'windows-latest'
+        run: |
+          choco install upx -y
+          upx --best --lzma target/${{ matrix.target }}/release/dstimer.exe
 
       - name: Rename binary (Unix)
         if: matrix.runner != 'windows-latest'
@@ -90,3 +105,49 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
+
+  # TODO: Enable after first manual submission to microsoft/winget-pkgs is accepted
+  # publish-winget:
+  #   name: Publish to WinGet
+  #   needs: release
+  #   runs-on: windows-latest
+  #   steps:
+  #     - name: Submit to WinGet
+  #       uses: vedantmgoyal9/winget-releaser@v2
+  #       with:
+  #         identifier: madLinux7.dstimer
+  #         installers-regex: 'dstimer-windows-x86_64\.exe$'
+  #         token: ${{ secrets.WINGET_TOKEN }}
+
+  # TODO: Enable when ready for Scoop distribution
+  # update-scoop:
+  #   name: Update Scoop manifest
+  #   needs: release
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Download Windows artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: dstimer-windows-x86_64.exe
+  #         path: artifacts
+  #
+  #     - name: Update Scoop manifest
+  #       run: |
+  #         VERSION="${GITHUB_REF_NAME#v}"
+  #         SHA256=$(sha256sum artifacts/dstimer-windows-x86_64.exe | cut -d' ' -f1)
+  #         cd pkg/scoop
+  #         jq --arg v "$VERSION" --arg h "$SHA256" \
+  #           '.version = $v |
+  #            .architecture."64bit".url = "https://github.com/madLinux7/dead-simple-cli-timer/releases/download/v\($v)/dstimer-windows-x86_64.exe#/dstimer.exe" |
+  #            .architecture."64bit".hash = $h' \
+  #           dstimer.json > dstimer.json.tmp && mv dstimer.json.tmp dstimer.json
+  #
+  #     - name: Commit updated manifest
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #         git add pkg/scoop/dstimer.json
+  #         git diff --cached --quiet || git commit -m "chore: update Scoop manifest to ${GITHUB_REF_NAME}"
+  #         git push
