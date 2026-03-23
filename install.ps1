@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Repo = "madLinux7/dead-simple-cli-timer"
+$Repo = "madLinux7/dstimer"
 $Bin = "dstimer"
 $InstallDir = "$env:LOCALAPPDATA\Programs\$Bin"
 $Asset = "$Bin-windows-x86_64.exe"

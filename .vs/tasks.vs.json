@@ -12,7 +12,7 @@
       ]
     },
     {
-      "taskLabel": "task-dead-simple-cli-timer",
+      "taskLabel": "task-dstimer",
       "appliesTo": "/",
       "type": "launch"
     }
