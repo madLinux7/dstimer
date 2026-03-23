@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="madLinux7/dead-simple-cli-timer"
+REPO="madLinux7/dstimer"
 BIN="dstimer"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 

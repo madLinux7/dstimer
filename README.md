@@ -67,13 +67,13 @@ Renders the timer on the **current terminal line** instead of taking over the fu
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/madLinux7/dead-simple-cli-timer/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/madLinux7/dstimer/main/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/madLinux7/dead-simple-cli-timer/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/madLinux7/dstimer/main/install.ps1 | iex
 ```
 
 **Via Cargo (requires Rust):**
@@ -89,8 +89,8 @@ MP3, FLAC, WAV, OGG, and anything else supported by [Symphonia](https://github.c
 ## Build from Source
 
 ```bash
-git clone https://github.com/madLinux7/dead-simple-cli-timer
-cd dead-simple-cli-timer
+git clone https://github.com/madLinux7/dstimer
+cd dstimer
 cargo build --release
 ./target/release/dstimer
 ```

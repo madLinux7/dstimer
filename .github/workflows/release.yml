@@ -140,7 +140,7 @@ jobs:
   #         cd pkg/scoop
   #         jq --arg v "$VERSION" --arg h "$SHA256" \
   #           '.version = $v |
-  #            .architecture."64bit".url = "https://github.com/madLinux7/dead-simple-cli-timer/releases/download/v\($v)/dstimer-windows-x86_64.exe#/dstimer.exe" |
+  #            .architecture."64bit".url = "https://github.com/madLinux7/dstimer/releases/download/v\($v)/dstimer-windows-x86_64.exe#/dstimer.exe" |
   #            .architecture."64bit".hash = $h' \
   #           dstimer.json > dstimer.json.tmp && mv dstimer.json.tmp dstimer.json
   #
