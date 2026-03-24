@@ -38,7 +38,6 @@ jobs:
           - target: x86_64-pc-windows-msvc
             runner: windows-latest
             asset_name: dstimer-windows-x86_64.exe
-            use_upx: true
 
     steps:
       - uses: actions/checkout@v4
