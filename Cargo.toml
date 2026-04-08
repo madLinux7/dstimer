@@ -1,6 +1,6 @@
 [package]
 name = "dstimer"
-version = "1.0.5"
+version = "1.1.0"
 edition = "2021"
 description = "A dead-simple, cross-platform CLI countdown timer with color-changing progress bar and optional audio playback"
 license = "MIT"
@@ -21,6 +21,9 @@ rodio = { version = "0.17", default-features = false, features = [
 ] }
 ctrlc = "3.4"
 ureq = "2"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+dirs = "5"
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 notify-rust = "4"
 

@@ -134,7 +134,11 @@ pub fn print_inline_finish(stdout: &mut io::Stdout, timer_row: u16, msg: &str) -
 
 /// Inline interactive prompt: HH:MM:SS entry on the current line.
 /// Returns (total_seconds, optional_audio_path, optional_url).
-pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
+/// Skips audio/url prompts when prefilled values are provided.
+pub fn inline_interactive_prompt(
+    prefilled_audio: Option<PathBuf>,
+    prefilled_url: Option<String>,
+) -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Show)?;
@@ -229,9 +233,17 @@ pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<S
     let seconds = (digits[4] as u64) * 10 + (digits[5] as u64);
     let total_secs = hours * 3600 + minutes * 60 + seconds;
 
-    // Erase prompt line, ask for audio path on same line
-    let audio_path = inline_prompt_audio_path(&mut stdout, prompt_row)?;
-    let url = inline_prompt_url(&mut stdout, prompt_row)?;
+    // Erase prompt line, ask for audio/url on same line (skip if prefilled)
+    let audio_path = if prefilled_audio.is_some() {
+        prefilled_audio
+    } else {
+        inline_prompt_audio_path(&mut stdout, prompt_row)?
+    };
+    let url = if prefilled_url.is_some() {
+        prefilled_url
+    } else {
+        inline_prompt_url(&mut stdout, prompt_row)?
+    };
 
     // Erase the prompt line before returning
     stdout
@@ -394,7 +406,11 @@ fn inline_prompt_audio_path(stdout: &mut io::Stdout, row: u16) -> io::Result<Opt
 
 /// Interactive prompt: centered HH:MM:SS digit-by-digit entry.
 /// Returns (total_seconds, optional_audio_path, optional_url).
-pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
+/// Skips audio/url prompts when prefilled values are provided.
+pub fn interactive_prompt(
+    prefilled_audio: Option<PathBuf>,
+    prefilled_url: Option<String>,
+) -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
@@ -473,8 +489,16 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<String>)
     let seconds = (digits[4] as u64) * 10 + (digits[5] as u64);
     let total_secs = hours * 3600 + minutes * 60 + seconds;
 
-    let audio_path = prompt_audio_path(&mut stdout)?;
-    let url = prompt_url(&mut stdout)?;
+    let audio_path = if prefilled_audio.is_some() {
+        prefilled_audio
+    } else {
+        prompt_audio_path(&mut stdout)?
+    };
+    let url = if prefilled_url.is_some() {
+        prefilled_url
+    } else {
+        prompt_url(&mut stdout)?
+    };
 
     stdout.execute(Clear(ClearType::All))?;
     stdout.execute(cursor::MoveTo(0, 0))?;

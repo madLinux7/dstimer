@@ -37,7 +37,7 @@ jobs:
 
           - target: x86_64-pc-windows-msvc
             runner: windows-latest
-            asset_name: dstimer-windows-x86_64.exe
+            asset_name: dstimer.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +114,7 @@ jobs:
   #       uses: vedantmgoyal9/winget-releaser@v2
   #       with:
   #         identifier: madLinux.dstimer
-  #         installers-regex: 'dstimer-windows-x86_64\.exe$'
+  #         installers-regex: 'dstimer\.exe$'
   #         token: ${{ secrets.WINGET_TOKEN }}
 
   update-scoop:
@@ -131,16 +131,16 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: dstimer-windows-x86_64.exe
+          name: dstimer.exe
           path: artifacts
 
       - name: Update Scoop manifest
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          SHA256=$(sha256sum artifacts/dstimer-windows-x86_64.exe | cut -d' ' -f1)
+          SHA256=$(sha256sum artifacts/dstimer.exe | cut -d' ' -f1)
           jq --arg v "$VERSION" --arg h "$SHA256" \
             '.version = $v |
-             .architecture."64bit".url = "https://github.com/madLinux7/dead-simple-cli-timer/releases/download/v\($v)/dstimer-windows-x86_64.exe#/dstimer.exe" |
+             .architecture."64bit".url = "https://github.com/madLinux7/dstimer/releases/download/v\($v)/dstimer.exe" |
              .architecture."64bit".hash = $h' \
             bucket/dstimer.json > bucket/dstimer.json.tmp && mv bucket/dstimer.json.tmp bucket/dstimer.json
 

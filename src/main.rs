@@ -1,4 +1,5 @@
 mod audio;
+mod config;
 mod render;
 
 use clap::Parser;
@@ -29,13 +30,13 @@ pub const ERR_ZERO_DURATION: &str = "Duration must be greater than 0 seconds";
     about = "A centered CLI timer with color-changing progress bar and option to play audio on finish."
 )]
 struct Args {
-    /// Duration in HH:MM:SS format (e.g. 1:30:00, 5:00, 90). Takes priority over --seconds
+    /// Duration in HH:MM:SS format (e.g. 1:30:00, 5:00, 90)
     #[arg(short, long, value_parser = parse_time)]
     time: Option<u64>,
 
-    /// Duration as a positional argument in HH:MM:SS format (e.g. 1:30:00, 5:00, 90)
-    #[arg(value_parser = parse_time)]
-    time_pos: Option<u64>,
+    /// Preset name or duration (e.g. "pomodoro" or "5:00")
+    #[arg()]
+    positional: Option<String>,
 
     /// Optional path to audio file to play when timer completes
     #[arg(short, long)]
@@ -86,22 +87,58 @@ fn parse_time(s: &str) -> Result<u64, String> {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let explicit_duration = args.time.or(args.time_pos);
+    let defaults = config::load_defaults();
+    let presets = config::load_presets();
+
+    // Resolve positional: preset name or time value
+    let (preset_name, time_from_positional) = match &args.positional {
+        Some(val) => {
+            if presets.contains_key(val) {
+                (Some(val.as_str()), None)
+            } else {
+                match parse_time(val) {
+                    Ok(t) => (None, Some(t)),
+                    Err(e) => {
+                        eprintln!("Error: '{val}' is not a known preset and not a valid time: {e}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        None => (None, None),
+    };
+
+    let preset_entry = preset_name.and_then(|name| presets.get(name));
+    let eff = config::merge(
+        &defaults,
+        preset_entry,
+        args.inline,
+        args.silent,
+        args.audio,
+        args.url,
+    );
+
+    // Validate audio path if resolved from preset/defaults
+    if let Some(ref path) = eff.audio {
+        if !path.exists() {
+            eprintln!("Error: audio file not found: {}", path.display());
+            std::process::exit(1);
+        }
+    }
+
+    // CLI --time > positional time > preset time > TUI prompt
+    let preset_time = eff.time.as_deref().and_then(|s| parse_time(s).ok());
+    let explicit_duration = args.time.or(time_from_positional).or(preset_time);
     let has_explicit_duration = explicit_duration.is_some();
 
     let (duration_secs, audio_path, url) = if let Some(secs) = explicit_duration {
-        if let Some(ref path) = args.audio {
-            if !path.exists() {
-                eprintln!("Error: audio file not found: {}", path.display());
-                std::process::exit(1);
-            }
-        }
-        (secs, args.audio, args.url)
+        (secs, eff.audio, eff.url)
     } else {
-        if args.inline {
-            render::inline_interactive_prompt()?
+        // TUI mode — skip prompts for audio/url if already resolved
+        if eff.inline {
+            render::inline_interactive_prompt(eff.audio, eff.url)?
         } else {
-            render::interactive_prompt()?
+            render::interactive_prompt(eff.audio, eff.url)?
         }
     };
 
@@ -123,7 +160,7 @@ fn main() -> io::Result<()> {
 
     let mut stdout = stdout();
 
-    if args.inline {
+    if eff.inline {
         if has_explicit_duration {
             stdout.execute(Print("\r\n"))?;
         }
@@ -136,7 +173,7 @@ fn main() -> io::Result<()> {
             &running,
             &audio_path,
             &url,
-            args.silent,
+            eff.silent,
         )?;
     } else {
         run_fullscreen_timer(
@@ -147,7 +184,7 @@ fn main() -> io::Result<()> {
             &running,
             &audio_path,
             &url,
-            args.silent,
+            eff.silent,
         )?;
     }
 
