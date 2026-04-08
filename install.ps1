@@ -3,7 +3,6 @@ $ErrorActionPreference = "Stop"
 $Repo = "madLinux7/dstimer"
 $Bin = "dstimer"
 $InstallDir = "$env:LOCALAPPDATA\Programs\$Bin"
-$Asset = "$Bin-windows-x86_64.exe"
 
 # Resolve latest release tag
 $Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
@@ -14,7 +13,7 @@ if (-not $Tag) {
     exit 1
 }
 
-$Url = "https://github.com/$Repo/releases/download/$Tag/$Asset"
+$Url = "https://github.com/$Repo/releases/download/$Tag/$Bin.exe"
 
 Write-Host "Installing $Bin $Tag (windows/x86_64)..."
 
