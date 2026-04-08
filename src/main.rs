@@ -41,6 +41,10 @@ struct Args {
     #[arg(short, long)]
     audio: Option<PathBuf>,
 
+    /// Optional URL to call (HTTP GET) when timer completes
+    #[arg(short, long)]
+    url: Option<String>,
+
     /// Disable notifications when timer finishes
     #[arg(long)]
     silent: bool,
@@ -85,14 +89,14 @@ fn main() -> io::Result<()> {
     let explicit_duration = args.time.or(args.time_pos);
     let has_explicit_duration = explicit_duration.is_some();
 
-    let (duration_secs, audio_path) = if let Some(secs) = explicit_duration {
+    let (duration_secs, audio_path, url) = if let Some(secs) = explicit_duration {
         if let Some(ref path) = args.audio {
             if !path.exists() {
                 eprintln!("Error: audio file not found: {}", path.display());
                 std::process::exit(1);
             }
         }
-        (secs, args.audio)
+        (secs, args.audio, args.url)
     } else {
         if args.inline {
             render::inline_interactive_prompt()?
@@ -131,6 +135,7 @@ fn main() -> io::Result<()> {
             end,
             &running,
             &audio_path,
+            &url,
             args.silent,
         )?;
     } else {
@@ -141,6 +146,7 @@ fn main() -> io::Result<()> {
             end,
             &running,
             &audio_path,
+            &url,
             args.silent,
         )?;
     }
@@ -165,6 +171,7 @@ fn run_fullscreen_timer(
     end: Instant,
     running: &Arc<AtomicBool>,
     audio_path: &Option<PathBuf>,
+    url: &Option<String>,
     silent: bool,
 ) -> io::Result<()> {
     terminal::enable_raw_mode()?;
@@ -192,9 +199,16 @@ fn run_fullscreen_timer(
     let (_, rows) = size()?;
     let center_row = rows / 2;
 
-    handle_finish(stdout, running, end, audio_path, silent, |stdout, msg| {
-        render::print_centered(stdout, center_row + 2, msg)
-    })?;
+    handle_finish(
+        stdout,
+        running,
+        end,
+        audio_path,
+        url,
+        silent,
+        |stdout, msg| render::print_centered(stdout, center_row + 2, msg),
+        |stdout, msg| render::print_centered(stdout, center_row + 4, msg),
+    )?;
 
     stdout.execute(cursor::Show)?;
     let (_, rows) = size()?;
@@ -212,6 +226,7 @@ fn run_inline_timer(
     end: Instant,
     running: &Arc<AtomicBool>,
     audio_path: &Option<PathBuf>,
+    url: &Option<String>,
     silent: bool,
 ) -> io::Result<()> {
     terminal::enable_raw_mode()?;
@@ -238,9 +253,16 @@ fn run_inline_timer(
         thread::sleep(Duration::from_millis(50));
     }
 
-    handle_finish(stdout, running, end, audio_path, silent, |stdout, msg| {
-        render::print_inline_finish(stdout, timer_row, msg)
-    })?;
+    handle_finish(
+        stdout,
+        running,
+        end,
+        audio_path,
+        url,
+        silent,
+        |stdout, msg| render::print_inline_finish(stdout, timer_row, msg),
+        |stdout, msg| render::print_inline_finish(stdout, timer_row + 1, msg),
+    )?;
 
     // Blank line after finish message
     stdout.execute(Print("\r\n\r\n"))?;
@@ -250,16 +272,19 @@ fn run_inline_timer(
     Ok(())
 }
 
-fn handle_finish<F>(
+fn handle_finish<F, G>(
     stdout: &mut io::Stdout,
     running: &Arc<AtomicBool>,
     end: Instant,
     audio_path: &Option<PathBuf>,
+    url: &Option<String>,
     silent: bool,
     print_msg: F,
+    print_url_msg: G,
 ) -> io::Result<()>
 where
     F: Fn(&mut io::Stdout, &str) -> io::Result<()>,
+    G: Fn(&mut io::Stdout, &str) -> io::Result<()>,
 {
     if running.load(Ordering::Relaxed) && Instant::now() >= end {
         const FINISHED_MSG: &str = "Timer finished!";
@@ -281,8 +306,34 @@ where
         } else {
             print_msg(stdout, FINISHED_MSG)?;
         }
+
+        if let Some(ref url) = url {
+            fire_url(url, &print_url_msg, stdout)?;
+        }
     } else {
         print_msg(stdout, "Timer cancelled")?;
+    }
+    Ok(())
+}
+
+fn fire_url<F>(url: &str, print_msg: &F, stdout: &mut io::Stdout) -> io::Result<()>
+where
+    F: Fn(&mut io::Stdout, &str) -> io::Result<()>,
+{
+    print_msg(stdout, &format!("Calling URL..."))?;
+    match ureq::get(url).call() {
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.into_string().unwrap_or_default();
+            if body.is_empty() {
+                print_msg(stdout, &format!("HTTP {status} (no body)"))?;
+            } else {
+                print_msg(stdout, &format!("HTTP {status}: {body}"))?;
+            }
+        }
+        Err(e) => {
+            print_msg(stdout, &format!("HTTP error: {e}"))?;
+        }
     }
     Ok(())
 }

@@ -133,8 +133,8 @@ pub fn print_inline_finish(stdout: &mut io::Stdout, timer_row: u16, msg: &str) -
 }
 
 /// Inline interactive prompt: HH:MM:SS entry on the current line.
-/// Returns (total_seconds, optional_audio_path).
-pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
+/// Returns (total_seconds, optional_audio_path, optional_url).
+pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Show)?;
@@ -231,6 +231,7 @@ pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
 
     // Erase prompt line, ask for audio path on same line
     let audio_path = inline_prompt_audio_path(&mut stdout, prompt_row)?;
+    let url = inline_prompt_url(&mut stdout, prompt_row)?;
 
     // Erase the prompt line before returning
     stdout
@@ -240,7 +241,7 @@ pub fn inline_interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
     stdout.execute(cursor::Hide)?;
     terminal::disable_raw_mode()?;
 
-    Ok((total_secs, audio_path))
+    Ok((total_secs, audio_path, url))
 }
 
 /// Draw inline HH:MM:SS input on a single line (left-aligned).
@@ -392,8 +393,8 @@ fn inline_prompt_audio_path(stdout: &mut io::Stdout, row: u16) -> io::Result<Opt
 }
 
 /// Interactive prompt: centered HH:MM:SS digit-by-digit entry.
-/// Returns (total_seconds, optional_audio_path).
-pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
+/// Returns (total_seconds, optional_audio_path, optional_url).
+pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
@@ -473,13 +474,14 @@ pub fn interactive_prompt() -> io::Result<(u64, Option<PathBuf>)> {
     let total_secs = hours * 3600 + minutes * 60 + seconds;
 
     let audio_path = prompt_audio_path(&mut stdout)?;
+    let url = prompt_url(&mut stdout)?;
 
     stdout.execute(Clear(ClearType::All))?;
     stdout.execute(cursor::MoveTo(0, 0))?;
     stdout.execute(cursor::Show)?;
     terminal::disable_raw_mode()?;
 
-    Ok((total_secs, audio_path))
+    Ok((total_secs, audio_path, url))
 }
 
 /// Draw the HH:MM:SS input mask centered on screen.
@@ -669,6 +671,178 @@ fn prompt_audio_path(stdout: &mut io::Stdout) -> io::Result<Option<PathBuf>> {
                             return Ok(Some(path));
                         }
                         error_msg = Some(format!("\"{}\" not found, check for typos", trimmed));
+                    }
+                    KeyCode::Char(c) => {
+                        input.push(c);
+                        error_msg = None;
+                    }
+                    KeyCode::Backspace => {
+                        input.pop();
+                        error_msg = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// Fullscreen URL prompt (centered).
+fn prompt_url(stdout: &mut io::Stdout) -> io::Result<Option<String>> {
+    stdout.execute(Clear(ClearType::All))?;
+
+    let title = "URL to call when done (optional, press Enter to skip):";
+    let mut input = String::new();
+    let mut error_msg: Option<String> = None;
+
+    stdout.execute(cursor::Show)?;
+
+    loop {
+        let (cols, rows) = size()?;
+        let center_row = rows / 2;
+        let title_col = cols.saturating_sub(title.len() as u16) / 2;
+
+        // Error message
+        let error_row = center_row.saturating_sub(3);
+        stdout
+            .queue(MoveTo(0, error_row))?
+            .queue(Clear(ClearType::CurrentLine))?;
+        if let Some(ref err) = error_msg {
+            let err_col = cols.saturating_sub(err.len() as u16) / 2;
+            stdout
+                .queue(MoveTo(err_col, error_row))?
+                .queue(SetForegroundColor(Color::Red))?
+                .queue(SetAttribute(Attribute::Bold))?
+                .queue(Print(err))?
+                .queue(SetAttribute(Attribute::Reset))?
+                .queue(ResetColor)?;
+        }
+
+        // Title
+        stdout
+            .queue(MoveTo(title_col, center_row.saturating_sub(1)))?
+            .queue(Clear(ClearType::CurrentLine))?
+            .queue(SetForegroundColor(Color::DarkGrey))?
+            .queue(Print(title))?
+            .queue(ResetColor)?;
+
+        // Input
+        let display_width = 60.min(cols as usize);
+        let input_col = (cols as usize).saturating_sub(display_width) / 2;
+        let visible_input = if input.len() > display_width {
+            &input[input.len() - display_width..]
+        } else {
+            &input[..]
+        };
+
+        stdout
+            .queue(MoveTo(input_col as u16, center_row))?
+            .queue(Clear(ClearType::CurrentLine))?
+            .queue(SetForegroundColor(Color::Cyan))?
+            .queue(SetAttribute(Attribute::Bold))?
+            .queue(Print(visible_input))?
+            .queue(SetAttribute(Attribute::Reset))?;
+
+        if input.is_empty() {
+            stdout
+                .queue(SetForegroundColor(Color::Cyan))?
+                .queue(Print("_"))?;
+        }
+
+        stdout.queue(ResetColor)?.flush()?;
+
+        if event::poll(Duration::from_millis(50))? {
+            if let Event::Key(key_event) = event::read()? {
+                if key_event.kind != KeyEventKind::Press {
+                    continue;
+                }
+                if is_quit_event(&key_event) {
+                    cleanup_and_exit(stdout);
+                }
+                match key_event.code {
+                    KeyCode::Enter => {
+                        let trimmed = input.trim();
+                        if trimmed.is_empty() {
+                            stdout.execute(cursor::Hide)?;
+                            return Ok(None);
+                        }
+                        if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+                            stdout.execute(cursor::Hide)?;
+                            return Ok(Some(trimmed.to_string()));
+                        }
+                        error_msg = Some("URL must start with http:// or https://".to_string());
+                    }
+                    KeyCode::Char(c) => {
+                        input.push(c);
+                        error_msg = None;
+                    }
+                    KeyCode::Backspace => {
+                        input.pop();
+                        error_msg = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// Inline URL prompt on a single line.
+fn inline_prompt_url(stdout: &mut io::Stdout, row: u16) -> io::Result<Option<String>> {
+    let mut input = String::new();
+    let mut error_msg: Option<String> = None;
+
+    loop {
+        stdout
+            .queue(MoveTo(0, row))?
+            .queue(Clear(ClearType::CurrentLine))?
+            .queue(SetForegroundColor(Color::DarkGrey))?
+            .queue(Print("URL to call (Enter to skip): "))?
+            .queue(ResetColor)?
+            .queue(SetForegroundColor(Color::Cyan))?
+            .queue(SetAttribute(Attribute::Bold))?
+            .queue(Print(&input))?
+            .queue(SetAttribute(Attribute::Reset))?;
+
+        if input.is_empty() {
+            stdout
+                .queue(SetForegroundColor(Color::Cyan))?
+                .queue(Print("_"))?;
+        }
+
+        if let Some(ref err) = error_msg {
+            stdout
+                .queue(Print("  "))?
+                .queue(SetForegroundColor(Color::Red))?
+                .queue(Print(err))?;
+        }
+
+        stdout.queue(ResetColor)?.flush()?;
+
+        if event::poll(Duration::from_millis(50))? {
+            if let Event::Key(key_event) = event::read()? {
+                if key_event.kind != KeyEventKind::Press {
+                    continue;
+                }
+                if is_quit_event(&key_event) {
+                    stdout
+                        .queue(MoveTo(0, row))?
+                        .queue(Clear(ClearType::CurrentLine))?
+                        .flush()?;
+                    stdout.execute(cursor::Show)?;
+                    terminal::disable_raw_mode()?;
+                    std::process::exit(0);
+                }
+                match key_event.code {
+                    KeyCode::Enter => {
+                        let trimmed = input.trim();
+                        if trimmed.is_empty() {
+                            return Ok(None);
+                        }
+                        if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+                            return Ok(Some(trimmed.to_string()));
+                        }
+                        error_msg = Some("Must start with http:// or https://".to_string());
                     }
                     KeyCode::Char(c) => {
                         input.push(c);

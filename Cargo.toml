@@ -20,6 +20,7 @@ rodio = { version = "0.17", default-features = false, features = [
     "symphonia-all",
 ] }
 ctrlc = "3.4"
+ureq = "2"
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 notify-rust = "4"
 
