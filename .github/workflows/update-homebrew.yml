@@ -1,0 +1,86 @@
+name: Update Homebrew tap
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+jobs:
+  update-homebrew:
+    name: Update Homebrew tap
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout homebrew-tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: madLinux7/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Get release tag
+        id: tag
+        run: echo "version=${GITHUB_EVENT_PATH##*/}" && echo "version=$(echo '${{ github.event.workflow_run.head_branch }}' | sed 's/^v//')" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets and update formula
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          gh release download "v${VERSION}" -R madLinux7/dstimer \
+            -p 'dstimer-macos-*' -p 'dstimer-linux-*' -D artifacts
+
+          SHA_MACOS_ARM64=$(sha256sum artifacts/dstimer-macos-aarch64 | cut -d' ' -f1)
+          SHA_MACOS_X86=$(sha256sum artifacts/dstimer-macos-x86_64 | cut -d' ' -f1)
+          SHA_LINUX_ARM64=$(sha256sum artifacts/dstimer-linux-aarch64 | cut -d' ' -f1)
+          SHA_LINUX_X86=$(sha256sum artifacts/dstimer-linux-x86_64 | cut -d' ' -f1)
+
+          cat > Formula/dstimer.rb <<FORMULA
+          class Dstimer < Formula
+            desc "The Timer for CLI people"
+            homepage "https://github.com/madLinux7/dstimer"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/madLinux7/dstimer/releases/download/v#{version}/dstimer-macos-aarch64"
+                sha256 "${SHA_MACOS_ARM64}"
+              else
+                url "https://github.com/madLinux7/dstimer/releases/download/v#{version}/dstimer-macos-x86_64"
+                sha256 "${SHA_MACOS_X86}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/madLinux7/dstimer/releases/download/v#{version}/dstimer-linux-aarch64"
+                sha256 "${SHA_LINUX_ARM64}"
+              else
+                url "https://github.com/madLinux7/dstimer/releases/download/v#{version}/dstimer-linux-x86_64"
+                sha256 "${SHA_LINUX_X86}"
+              end
+            end
+
+            def install
+              binary = Dir["dstimer-*"].first || "dstimer"
+              mv binary, "dstimer" if binary != "dstimer"
+              chmod 0755, "dstimer"
+              bin.install "dstimer"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/dstimer --version")
+            end
+          end
+          FORMULA
+          sed -i 's/^          //' Formula/dstimer.rb
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/dstimer.rb
+          git diff --cached --quiet || git commit -m "Update dstimer to v${VERSION}"
+          git push

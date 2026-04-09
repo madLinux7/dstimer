@@ -116,38 +116,3 @@ jobs:
   #         identifier: madLinux.dstimer
   #         installers-regex: 'dstimer\.exe$'
   #         token: ${{ secrets.WINGET_TOKEN }}
-
-  update-scoop:
-    name: Update Scoop bucket
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout scoop-bucket repo
-        uses: actions/checkout@v4
-        with:
-          repository: madLinux7/scoop-bucket
-          token: ${{ secrets.SCOOP_TOKEN }}
-
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dstimer.exe
-          path: artifacts
-
-      - name: Update Scoop manifest
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          SHA256=$(sha256sum artifacts/dstimer.exe | cut -d' ' -f1)
-          jq --arg v "$VERSION" --arg h "$SHA256" \
-            '.version = $v |
-             .architecture."64bit".url = "https://github.com/madLinux7/dstimer/releases/download/v\($v)/dstimer.exe" |
-             .architecture."64bit".hash = $h' \
-            bucket/dstimer.json > bucket/dstimer.json.tmp && mv bucket/dstimer.json.tmp bucket/dstimer.json
-
-      - name: Commit and push
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bucket/dstimer.json
-          git diff --cached --quiet || git commit -m "Update dstimer to ${GITHUB_REF_NAME}"
-          git push

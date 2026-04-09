@@ -1,0 +1,47 @@
+name: Update Scoop bucket
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+jobs:
+  update-scoop:
+    name: Update Scoop bucket
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout scoop-bucket repo
+        uses: actions/checkout@v4
+        with:
+          repository: madLinux7/scoop-bucket
+          token: ${{ secrets.SCOOP_TOKEN }}
+
+      - name: Get release tag
+        id: tag
+        run: echo "version=$(echo '${{ github.event.workflow_run.head_branch }}' | sed 's/^v//')" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows asset and update manifest
+        env:
+          GH_TOKEN: ${{ secrets.SCOOP_TOKEN }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          gh release download "v${VERSION}" -R madLinux7/dstimer \
+            -p 'dstimer.exe' -D artifacts
+
+          SHA256=$(sha256sum artifacts/dstimer.exe | cut -d' ' -f1)
+          jq --arg v "$VERSION" --arg h "$SHA256" \
+            '.version = $v |
+             .architecture."64bit".url = "https://github.com/madLinux7/dstimer/releases/download/v\($v)/dstimer.exe" |
+             .architecture."64bit".hash = $h' \
+            bucket/dstimer.json > bucket/dstimer.json.tmp && mv bucket/dstimer.json.tmp bucket/dstimer.json
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/dstimer.json
+          git diff --cached --quiet || git commit -m "Update dstimer to v${VERSION}"
+          git push
