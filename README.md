@@ -223,8 +223,4 @@ dstimer couldn't be dead simple without the efforts of some great open-source pr
 - [notify-rust](https://github.com/hoodie/notify-rust) — desktop notifications on Linux & Windows
 - [winresource](https://github.com/mxre/winresource) — embedding the app icon on Windows
 
-And a special shoutout to [VHS](https://github.com/charmbracelet/vhs) by Charm for making it _dead simple_ to record bootyful terminal GIFs straight from a script ♥️
-
----
-
-Made with ♥️ by [Linus](https://grolmes.de)
+And a special shoutout to [VHS](https://github.com/charmbracelet/vhs) by Charm for making it _dead simple_ to record sick custom terminal GIFs!
