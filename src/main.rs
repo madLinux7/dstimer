@@ -160,7 +160,7 @@ fn main() -> io::Result<()> {
 
     let mut stdout = stdout();
 
-    if eff.inline {
+    let finished = if eff.inline {
         if has_explicit_duration {
             stdout.execute(Print("\r\n"))?;
         }
@@ -174,7 +174,7 @@ fn main() -> io::Result<()> {
             &audio_path,
             &url,
             eff.silent,
-        )?;
+        )?
     } else {
         run_fullscreen_timer(
             &mut stdout,
@@ -185,7 +185,11 @@ fn main() -> io::Result<()> {
             &audio_path,
             &url,
             eff.silent,
-        )?;
+        )?
+    };
+
+    if !finished {
+        std::process::exit(render::QUIT_EXIT_CODE);
     }
 
     Ok(())
@@ -210,7 +214,7 @@ fn run_fullscreen_timer(
     audio_path: &Option<PathBuf>,
     url: &Option<String>,
     silent: bool,
-) -> io::Result<()> {
+) -> io::Result<bool> {
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
     stdout.execute(Clear(ClearType::All))?;
@@ -233,6 +237,9 @@ fn run_fullscreen_timer(
         thread::sleep(Duration::from_millis(50));
     }
 
+    // Capture completion status before audio playback can flip `running`.
+    let finished = running.load(Ordering::Relaxed) && Instant::now() >= end;
+
     let (_, rows) = size()?;
     let center_row = rows / 2;
 
@@ -253,7 +260,7 @@ fn run_fullscreen_timer(
     stdout.execute(Print("\n"))?;
     terminal::disable_raw_mode()?;
 
-    Ok(())
+    Ok(finished)
 }
 
 fn run_inline_timer(
@@ -265,7 +272,7 @@ fn run_inline_timer(
     audio_path: &Option<PathBuf>,
     url: &Option<String>,
     silent: bool,
-) -> io::Result<()> {
+) -> io::Result<bool> {
     terminal::enable_raw_mode()?;
     stdout.execute(cursor::Hide)?;
 
@@ -290,6 +297,9 @@ fn run_inline_timer(
         thread::sleep(Duration::from_millis(50));
     }
 
+    // Capture completion status before audio playback can flip `running`.
+    let finished = running.load(Ordering::Relaxed) && Instant::now() >= end;
+
     handle_finish(
         stdout,
         running,
@@ -306,7 +316,7 @@ fn run_inline_timer(
     stdout.execute(cursor::Show)?;
     terminal::disable_raw_mode()?;
 
-    Ok(())
+    Ok(finished)
 }
 
 fn handle_finish<F, G>(
