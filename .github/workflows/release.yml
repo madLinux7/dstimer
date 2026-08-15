@@ -104,15 +104,3 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
-
-  # publish-winget:
-  #   name: Publish to WinGet
-  #   needs: release
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: Submit to WinGet
-  #       uses: vedantmgoyal9/winget-releaser@v2
-  #       with:
-  #         identifier: madLinux.dstimer
-  #         installers-regex: 'dstimer\.exe$'
-  #         token: ${{ secrets.WINGET_TOKEN }}

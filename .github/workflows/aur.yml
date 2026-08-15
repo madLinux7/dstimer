@@ -1,0 +1,129 @@
+name: AUR Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v1.1.1)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          PKGVER="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "pkgver=$PKGVER" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for tarball & compute sha256
+        id: sha
+        run: |
+          URL="https://github.com/madLinux7/dstimer/archive/${{ steps.version.outputs.tag }}.tar.gz"
+          for i in 1 2 3 4 5; do
+            if curl -fsSL "$URL" -o src.tar.gz; then
+              break
+            fi
+            echo "Tarball not ready, retry $i/5..."
+            sleep 10
+          done
+          SHA=$(sha256sum src.tar.gz | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t rsa,ecdsa,ed25519 aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<EOF
+          Host aur.archlinux.org
+            User aur
+            IdentityFile ~/.ssh/aur
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Clone AUR repo
+        run: git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/dstimer.git aur-repo
+
+      - name: Render PKGBUILD & .SRCINFO
+        env:
+          PKGVER: ${{ steps.version.outputs.pkgver }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          cat > aur-repo/PKGBUILD <<EOF
+          # Maintainer: Linus Grolmes <linus@grolmes.de>
+          pkgname=dstimer
+          pkgver=${PKGVER}
+          pkgrel=1
+          pkgdesc="The Timer for CLI people"
+          arch=('x86_64' 'aarch64')
+          url="https://github.com/madLinux7/dstimer"
+          license=('MIT')
+          makedepends=('rust' 'alsa-lib' 'pkgconf')
+          depends=('alsa-lib')
+          source=("\$pkgname-\$pkgver.tar.gz::https://github.com/madLinux7/dstimer/archive/v\$pkgver.tar.gz")
+          sha256sums=('${SHA256}')
+
+          build() {
+              cd "\$pkgname-\$pkgver"
+              cargo build --release --locked
+          }
+
+          package() {
+              cd "\$pkgname-\$pkgver"
+              install -Dm755 target/release/dstimer "\$pkgdir/usr/bin/dstimer"
+              install -Dm644 LICENSE "\$pkgdir/usr/share/licenses/\$pkgname/LICENSE"
+          }
+          EOF
+
+          cat > aur-repo/.SRCINFO <<EOF
+          pkgbase = dstimer
+          	pkgdesc = The Timer for CLI people
+          	pkgver = ${PKGVER}
+          	pkgrel = 1
+          	url = https://github.com/madLinux7/dstimer
+          	arch = x86_64
+          	arch = aarch64
+          	license = MIT
+          	makedepends = rust
+          	makedepends = alsa-lib
+          	makedepends = pkgconf
+          	depends = alsa-lib
+          	source = dstimer-${PKGVER}.tar.gz::https://github.com/madLinux7/dstimer/archive/v${PKGVER}.tar.gz
+          	sha256sums = ${SHA256}
+
+          pkgname = dstimer
+          EOF
+
+      - name: Commit & push
+        working-directory: aur-repo
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "Linus Grolmes"
+          git config user.email "linus@grolmes.de"
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+            exit 0
+          fi
+          git commit -m "[ci] Update to ${TAG}"
+          git push
