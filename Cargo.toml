@@ -13,10 +13,14 @@ readme = "README.md"
 [build-dependencies]
 winresource = "0.1"
 
+[features]
+default = ["audio"]
+audio = ["dep:rodio", "dep:libc"]
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 crossterm = "0.27"
-rodio = { version = "0.17", default-features = false, features = [
+rodio = { version = "0.17", optional = true, default-features = false, features = [
     "symphonia-all",
 ] }
 ctrlc = "3.4"
@@ -28,4 +32,4 @@ dirs = "5"
 notify-rust = "4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-libc = "0.2"
+libc = { version = "0.2", optional = true }

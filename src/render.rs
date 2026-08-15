@@ -137,9 +137,9 @@ pub fn print_inline_finish(stdout: &mut io::Stdout, timer_row: u16, msg: &str) -
 
 /// Inline interactive prompt: HH:MM:SS entry on the current line.
 /// Returns (total_seconds, optional_audio_path, optional_url).
-/// Skips audio/url prompts when prefilled values are provided.
+/// Audio is prompted only in builds with the `audio` feature.
 pub fn inline_interactive_prompt(
-    prefilled_audio: Option<PathBuf>,
+    #[cfg(feature = "audio")] prefilled_audio: Option<PathBuf>,
     prefilled_url: Option<String>,
 ) -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
@@ -236,12 +236,15 @@ pub fn inline_interactive_prompt(
     let seconds = (digits[4] as u64) * 10 + (digits[5] as u64);
     let total_secs = hours * 3600 + minutes * 60 + seconds;
 
-    // Erase prompt line, ask for audio/url on same line (skip if prefilled)
+    // Erase prompt line, then ask for enabled optional actions.
+    #[cfg(feature = "audio")]
     let audio_path = if prefilled_audio.is_some() {
         prefilled_audio
     } else {
         inline_prompt_audio_path(&mut stdout, prompt_row)?
     };
+    #[cfg(not(feature = "audio"))]
+    let audio_path = None;
     let url = if prefilled_url.is_some() {
         prefilled_url
     } else {
@@ -335,6 +338,7 @@ fn draw_inline_time_input(
 }
 
 /// Inline audio path prompt on a single line.
+#[cfg(feature = "audio")]
 fn inline_prompt_audio_path(stdout: &mut io::Stdout, row: u16) -> io::Result<Option<PathBuf>> {
     let mut input = String::new();
     let mut error_msg: Option<String> = None;
@@ -409,9 +413,9 @@ fn inline_prompt_audio_path(stdout: &mut io::Stdout, row: u16) -> io::Result<Opt
 
 /// Interactive prompt: centered HH:MM:SS digit-by-digit entry.
 /// Returns (total_seconds, optional_audio_path, optional_url).
-/// Skips audio/url prompts when prefilled values are provided.
+/// Audio is prompted only in builds with the `audio` feature.
 pub fn interactive_prompt(
-    prefilled_audio: Option<PathBuf>,
+    #[cfg(feature = "audio")] prefilled_audio: Option<PathBuf>,
     prefilled_url: Option<String>,
 ) -> io::Result<(u64, Option<PathBuf>, Option<String>)> {
     let mut stdout = stdout();
@@ -492,11 +496,14 @@ pub fn interactive_prompt(
     let seconds = (digits[4] as u64) * 10 + (digits[5] as u64);
     let total_secs = hours * 3600 + minutes * 60 + seconds;
 
+    #[cfg(feature = "audio")]
     let audio_path = if prefilled_audio.is_some() {
         prefilled_audio
     } else {
         prompt_audio_path(&mut stdout)?
     };
+    #[cfg(not(feature = "audio"))]
+    let audio_path = None;
     let url = if prefilled_url.is_some() {
         prefilled_url
     } else {
@@ -614,6 +621,7 @@ fn draw_time_input(
 }
 
 /// Prompt for an optional audio file path.
+#[cfg(feature = "audio")]
 fn prompt_audio_path(stdout: &mut io::Stdout) -> io::Result<Option<PathBuf>> {
     stdout.execute(Clear(ClearType::All))?;
 

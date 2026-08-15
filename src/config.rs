@@ -13,6 +13,7 @@ pub struct Defaults {
     pub inline: bool,
     #[serde(default)]
     pub silent: bool,
+    #[cfg(feature = "audio")]
     #[serde(default)]
     pub audio: String,
     #[serde(default)]
@@ -24,6 +25,7 @@ impl Default for Defaults {
         Self {
             inline: false,
             silent: false,
+            #[cfg(feature = "audio")]
             audio: String::new(),
             url: String::new(),
         }
@@ -35,6 +37,7 @@ pub struct PresetEntry {
     pub time: Option<String>,
     pub inline: Option<bool>,
     pub silent: Option<bool>,
+    #[cfg(feature = "audio")]
     pub audio: Option<String>,
     pub url: Option<String>,
 }
@@ -81,7 +84,11 @@ pub fn load_presets() -> Presets {
     };
     let path = dir.join(PRESETS_FILE);
     if !path.exists() {
-        let _ = fs::write(&path, "# Named timer presets\n# Example:\n#\n# pomodoro:\n#   time: \"25:00\"\n#   inline: true\n#   silent: false\n#   audio: \"/path/to/sound.flac\"\n#   url: \"\"\n");
+        #[cfg(feature = "audio")]
+        let example = "# Named timer presets\n# Example:\n#\n# pomodoro:\n#   time: \"25:00\"\n#   inline: true\n#   silent: false\n#   audio: \"/path/to/sound.flac\"\n#   url: \"\"\n";
+        #[cfg(not(feature = "audio"))]
+        let example = "# Named timer presets\n# Example:\n#\n# pomodoro:\n#   time: \"25:00\"\n#   inline: true\n#   silent: false\n#   url: \"\"\n";
+        let _ = fs::write(&path, example);
         return Presets::new();
     }
     let contents = match fs::read_to_string(&path) {
@@ -96,10 +103,12 @@ pub struct Effective {
     pub time: Option<String>,
     pub inline: bool,
     pub silent: bool,
+    #[cfg(feature = "audio")]
     pub audio: Option<PathBuf>,
     pub url: Option<String>,
 }
 
+#[cfg(feature = "audio")]
 fn non_empty_path(s: &str) -> Option<PathBuf> {
     if s.is_empty() {
         None
@@ -123,15 +132,12 @@ pub fn merge(
     preset: Option<&PresetEntry>,
     cli_inline: bool,
     cli_silent: bool,
-    cli_audio: Option<PathBuf>,
+    #[cfg(feature = "audio")] cli_audio: Option<PathBuf>,
     cli_url: Option<String>,
 ) -> Effective {
-    let base_inline = preset
-        .and_then(|c| c.inline)
-        .unwrap_or(defaults.inline);
-    let base_silent = preset
-        .and_then(|c| c.silent)
-        .unwrap_or(defaults.silent);
+    let base_inline = preset.and_then(|c| c.inline).unwrap_or(defaults.inline);
+    let base_silent = preset.and_then(|c| c.silent).unwrap_or(defaults.silent);
+    #[cfg(feature = "audio")]
     let base_audio = preset
         .and_then(|c| c.audio.as_deref())
         .map_or_else(|| non_empty_path(&defaults.audio), non_empty_path);
@@ -145,7 +151,30 @@ pub fn merge(
         time: preset_time,
         inline: cli_inline || base_inline,
         silent: cli_silent || base_silent,
+        #[cfg(feature = "audio")]
         audio: cli_audio.or(base_audio),
         url: cli_url.or(base_url),
+    }
+}
+
+#[cfg(all(test, not(feature = "audio")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_legacy_audio_values_without_enabling_audio() {
+        let defaults: Defaults = serde_yaml::from_str(
+            "inline: false\nsilent: false\naudio: /tmp/legacy-sound.wav\nurl: https://example.com/default\n",
+        )
+        .unwrap();
+        let presets: Presets = serde_yaml::from_str(
+            "headless:\n  time: \"5:00\"\n  audio: /tmp/legacy-preset.wav\n  url: https://example.com/preset\n",
+        )
+        .unwrap();
+
+        let effective = merge(&defaults, presets.get("headless"), false, false, None);
+
+        assert_eq!(effective.time.as_deref(), Some("5:00"));
+        assert_eq!(effective.url.as_deref(), Some("https://example.com/preset"));
     }
 }

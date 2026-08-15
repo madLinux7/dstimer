@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (${{ matrix.features }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features: [default, no-audio]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install ALSA development libraries
+        if: matrix.features == 'default'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+      - name: Test
+        run: |
+          if [ "${{ matrix.features }}" = "no-audio" ]; then
+            cargo no-audio-test
+          else
+            cargo test
+          fi

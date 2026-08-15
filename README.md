@@ -13,7 +13,7 @@ A dead-simple, cross-platform CLI countdown timer featuring:
 - Optional notifications on finish
 - YAML-based presets and defaults.
 
-Written in Rust for maximum efficiency and portability.
+You can also install a [non-audio features version](#audio-free--headless-cargo-install) with `cargo no-audio-release`
 
 <p align="center">
   <img src="demo_args_1.gif" alt="dssh demo"><br>
@@ -184,6 +184,25 @@ irm https://raw.githubusercontent.com/madLinux7/dstimer/main/install.ps1 | iex
 cargo install dstimer
 ```
 
+### Audio-free / headless Cargo install
+
+For headless or minimal Linux systems, install without audio playback and its
+system audio build dependencies:
+
+```sh
+cargo install dstimer --no-default-features
+```
+
+> `--no-default-features` is a Cargo built-in flag (learned this recently, can't be renamed); in this
+> project `audio` is the only default feature, so it is exactly equivalent to
+> building without audio. For local builds you can use the shorter
+> `cargo no-audio` / `cargo no-audio-release` aliases defined in
+> `.cargo/config.toml`.
+
+This build retains timers, presets, webhooks, and desktop notifications, but
+does not provide the `--audio` flag or an audio prompt. Existing `audio:`
+values in `defaults.yaml` and `presets.yaml` are ignored.
+
 ## Supported Audio Formats
 
 MP3, FLAC, WAV, OGG, and anything else supported by [Symphonia](https://github.com/pdeljanov/Symphonia).
@@ -198,6 +217,9 @@ cargo build --release
 ```
 
 Requires Rust 1.70+.
+
+To build an audio-free binary, use `cargo no-audio-release` (alias for
+`cargo build --release --no-default-features`).
 
 ## Contributing
 

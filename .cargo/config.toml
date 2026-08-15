@@ -1,0 +1,4 @@
+[alias]
+no-audio = "build --no-default-features"
+no-audio-release = "build --release --no-default-features"
+no-audio-test = "test --no-default-features"

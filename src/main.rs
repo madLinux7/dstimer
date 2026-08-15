@@ -1,3 +1,4 @@
+#[cfg(feature = "audio")]
 mod audio;
 mod config;
 mod render;
@@ -26,9 +27,7 @@ pub const ERR_ZERO_DURATION: &str = "Duration must be greater than 0 seconds";
 
 #[derive(Parser)]
 #[command(name = "dstimer")]
-#[command(
-    about = "A centered CLI timer with color-changing progress bar and option to play audio on finish."
-)]
+#[command(about = "A centered CLI timer with a color-changing progress bar.")]
 struct Args {
     /// Duration in HH:MM:SS format (e.g. 1:30:00, 5:00, 90)
     #[arg(short, long, value_parser = parse_time)]
@@ -39,6 +38,7 @@ struct Args {
     positional: Option<String>,
 
     /// Optional path to audio file to play when timer completes
+    #[cfg(feature = "audio")]
     #[arg(short, long)]
     audio: Option<PathBuf>,
 
@@ -114,11 +114,13 @@ fn main() -> io::Result<()> {
         preset_entry,
         args.inline,
         args.silent,
+        #[cfg(feature = "audio")]
         args.audio,
         args.url,
     );
 
     // Validate audio path if resolved from preset/defaults
+    #[cfg(feature = "audio")]
     if let Some(ref path) = eff.audio {
         if !path.exists() {
             eprintln!("Error: audio file not found: {}", path.display());
@@ -132,13 +134,31 @@ fn main() -> io::Result<()> {
     let has_explicit_duration = explicit_duration.is_some();
 
     let (duration_secs, audio_path, url) = if let Some(secs) = explicit_duration {
-        (secs, eff.audio, eff.url)
+        #[cfg(feature = "audio")]
+        {
+            (secs, eff.audio, eff.url)
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            (secs, None, eff.url)
+        }
     } else {
         // TUI mode — skip prompts for audio/url if already resolved
-        if eff.inline {
-            render::inline_interactive_prompt(eff.audio, eff.url)?
-        } else {
-            render::interactive_prompt(eff.audio, eff.url)?
+        #[cfg(feature = "audio")]
+        {
+            if eff.inline {
+                render::inline_interactive_prompt(eff.audio, eff.url)?
+            } else {
+                render::interactive_prompt(eff.audio, eff.url)?
+            }
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            if eff.inline {
+                render::inline_interactive_prompt(eff.url)?
+            } else {
+                render::interactive_prompt(eff.url)?
+            }
         }
     };
 
@@ -335,22 +355,34 @@ where
 {
     if running.load(Ordering::Relaxed) && Instant::now() >= end {
         const FINISHED_MSG: &str = "Timer finished!";
+        #[cfg(feature = "audio")]
         const FINISHED_MSG_AUDIO: &str = "Timer finished \u{266a} Playing audio";
 
+        #[cfg(feature = "audio")]
         let has_audio = audio_path.is_some();
+        #[cfg(feature = "audio")]
         let body = if has_audio {
             FINISHED_MSG_AUDIO
         } else {
             FINISHED_MSG
         };
+        #[cfg(not(feature = "audio"))]
+        let body = FINISHED_MSG;
         if !silent {
             send_notification("Dead Simple CLI Timer", body);
         }
 
+        #[cfg(feature = "audio")]
         if has_audio {
             print_msg(stdout, FINISHED_MSG_AUDIO)?;
             audio::play_audio(audio_path.as_ref().unwrap(), running);
         } else {
+            print_msg(stdout, FINISHED_MSG)?;
+        }
+
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = audio_path;
             print_msg(stdout, FINISHED_MSG)?;
         }
 
