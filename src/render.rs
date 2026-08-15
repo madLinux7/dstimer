@@ -11,6 +11,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Exit code used when the user cancels via Ctrl+C or Esc (128 + SIGINT).
+pub const QUIT_EXIT_CODE: i32 = 130;
+
 /// Returns true if the event is Ctrl+C or Esc.
 pub fn is_quit_event(key: &event::KeyEvent) -> bool {
     key.code == KeyCode::Esc
@@ -23,7 +26,7 @@ fn cleanup_and_exit(stdout: &mut io::Stdout) -> ! {
     let _ = stdout.execute(cursor::MoveTo(0, 0));
     let _ = stdout.execute(cursor::Show);
     let _ = terminal::disable_raw_mode();
-    std::process::exit(0);
+    std::process::exit(QUIT_EXIT_CODE);
 }
 
 /// Print a message centered horizontally at the given row.
@@ -182,7 +185,7 @@ pub fn inline_interactive_prompt(
                         .flush()?;
                     stdout.execute(cursor::Show)?;
                     terminal::disable_raw_mode()?;
-                    std::process::exit(0);
+                    std::process::exit(QUIT_EXIT_CODE);
                 }
                 match key_event.code {
                     KeyCode::Char(c) if c.is_ascii_digit() && cursor_pos < 6 => {
@@ -375,7 +378,7 @@ fn inline_prompt_audio_path(stdout: &mut io::Stdout, row: u16) -> io::Result<Opt
                         .flush()?;
                     stdout.execute(cursor::Show)?;
                     terminal::disable_raw_mode()?;
-                    std::process::exit(0);
+                    std::process::exit(QUIT_EXIT_CODE);
                 }
                 match key_event.code {
                     KeyCode::Enter => {
@@ -855,7 +858,7 @@ fn inline_prompt_url(stdout: &mut io::Stdout, row: u16) -> io::Result<Option<Str
                         .flush()?;
                     stdout.execute(cursor::Show)?;
                     terminal::disable_raw_mode()?;
-                    std::process::exit(0);
+                    std::process::exit(QUIT_EXIT_CODE);
                 }
                 match key_event.code {
                     KeyCode::Enter => {
