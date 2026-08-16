@@ -16,12 +16,12 @@ A dead-simple, cross-platform CLI countdown timer featuring:
 You can also install a [non-audio features version](#audio-free--headless-cargo-install) with `cargo no-audio-release`
 
 <p align="center">
-  <img src="demo_args_1.gif" alt="dssh demo"><br>
+  <img src="https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_args_1.gif" alt="dssh demo"><br>
   <sub>Demo with 7 seconds as argument (Fullscreen)</sub>
 </p>
 
 <p align="center">
-  <img src="demo_pomodoro_yaml.gif" alt="dssh demo"><br>
+  <img src="https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_pomodoro_yaml.gif" alt="dssh demo"><br>
   <sub>Demo with pomodoro preset (Inline)</sub>
 </p>
 
@@ -72,7 +72,7 @@ dstimer
 
 You'll be prompted to enter a duration, an optional audio file path, and an optional URL.
 
-![demo_manual](demo_manual.gif)
+![demo_manual](https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_manual.gif)
 
 ### Fullscreen mode
 
@@ -87,7 +87,7 @@ dstimer pomodoro # loads named preset
 dstimer pomodoro -t 30:00 # preset with CLI time override
 ```
 
-![Demo with seconds and audio as arguments](demo_args_2.gif)
+![Demo with seconds and audio as arguments](https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_args_2.gif)
 
 ### **Inline mode** (`--inline` / `-i`):
 
@@ -98,9 +98,9 @@ dstimer 60 -i
 
 Renders the timer on the **current terminal line** instead of taking over the full screen. Useful for scripts, split panes, or when you want the rest of your terminal history visible.
 
-![Demo inline interactive mode](demo_inline_manual.gif)
-![Demo inline with -i -t 00:00:07 args](demo_inline_args_1.gif)
-![Demo inline with -i -t 00:00:07 -a "home/linuxg/Musik/Super Survivor.flac" args](demo_inline_args_2.gif)
+![Demo inline interactive mode](https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_inline_manual.gif)
+![Demo inline with -i -t 00:00:07 args](https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_inline_args_1.gif)
+![Demo inline with -i -t 00:00:07 -a "home/linuxg/Musik/Super Survivor.flac" args](https://raw.githubusercontent.com/madLinux7/dstimer-artifacts/refs/heads/main/demo_inline_args_2.gif)
 
 ## Configuration
 
